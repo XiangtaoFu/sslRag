@@ -1,0 +1,11 @@
+﻿langchain
+langchain-community
+chromadb
+sentence-transformers
+pymupdf
+beautifulsoup4
+requests
+rank-bm25
+openai
+streamlit
+python-dotenv
