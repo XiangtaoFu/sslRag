@@ -32,6 +32,35 @@ sys.stdout.reconfigure(encoding="utf-8")
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 load_dotenv(PROJECT_ROOT / ".env")
 
+# Empty OPENAI_BASE_URL breaks the SDK; unset so the default OpenAI host is used.
+def _unset_empty_env(*names: str) -> None:
+    for name in names:
+        v = os.environ.get(name)
+        if v is not None and not str(v).strip():
+            os.environ.pop(name, None)
+
+
+_unset_empty_env("OPENAI_BASE_URL")
+
+
+def openai_client() -> OpenAI:
+    """
+    Build OpenAI SDK client with an explicit base_url when set.
+    Relying on env alone often still hits api.openai.com; OpenRouter keys (sk-or-v1-...)
+    require base_url=https://openrouter.ai/api/v1 .
+    """
+    key = (os.getenv("OPENAI_API_KEY") or "").strip()
+    base = (os.getenv("OPENAI_BASE_URL") or "").strip()
+    if not key and not base:
+        return OpenAI()
+    kw: dict = {}
+    if key:
+        kw["api_key"] = key
+    if base:
+        kw["base_url"] = base
+    return OpenAI(**kw)
+
+
 # ── Paths ─────────────────────────────────────────────────────────────
 BUNDLE = PROJECT_ROOT / "data" / "final_corpus_bundle"
 RAG_DATA = PROJECT_ROOT / "data" / "rag_v1"
@@ -712,7 +741,7 @@ def main():
     print("\n[Models] Loading...")
     embed_model = SentenceTransformer(EMBED_MODEL_NAME)
     reranker = CrossEncoder(RERANK_MODEL_NAME)
-    client = OpenAI()
+    client = openai_client()
 
     meta, ctx_idx, qa_items, qa_idx, bm25, dataset = load_all(embed_model)
 
